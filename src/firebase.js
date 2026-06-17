@@ -68,3 +68,4 @@ export function subscribeUmbrellas(db_instance, callback) {
     }
   });
 }
+// updated
