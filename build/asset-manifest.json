@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.js": "/static/js/main.262550fa.js",
-    "index.html": "/index.html",
-    "main.262550fa.js.map": "/static/js/main.262550fa.js.map"
+    "main.js": "/lido-public/static/js/main.9dc2d1b4.js",
+    "index.html": "/lido-public/index.html",
+    "main.9dc2d1b4.js.map": "/lido-public/static/js/main.9dc2d1b4.js.map"
   },
   "entrypoints": [
-    "static/js/main.262550fa.js"
+    "static/js/main.9dc2d1b4.js"
   ]
 }
