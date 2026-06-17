@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBoqlln2_CAeDGiZsi0Zlqgk0UqmijmCIQ",
@@ -51,7 +51,6 @@ export async function loadUmbrellas(db_instance) {
 }
 
 export function subscribeUmbrellas(db_instance, callback) {
-  const { onSnapshot, doc } = require("firebase/firestore");
   return onSnapshot(doc(db_instance, "lido", "dati"), (snap) => {
     if (snap.exists()) {
       const data = snap.data();
@@ -68,4 +67,3 @@ export function subscribeUmbrellas(db_instance, callback) {
     }
   });
 }
-// updated
