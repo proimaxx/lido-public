@@ -50,6 +50,7 @@ export default function App() {
   const [cols, setCols] = useState(8);
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [selectedUmb, setSelectedUmb] = useState(null);
+  const [disponibilita, setDisponibilita] = useState({giorni_bloccati:[],ombrelloni_bloccati:[],stagione:{dal:"",al:""}});
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -65,6 +66,7 @@ export default function App() {
         if (data.umbrellas.length) setUmbrellas(data.umbrellas);
         if (data.rows) setRows(data.rows);
         if (data.cols) setCols(data.cols);
+        if (data.disponibilita) setDisponibilita(data.disponibilita);
       });
     }
   }, [user]);
@@ -78,6 +80,11 @@ export default function App() {
   if (!user) return <Auth app={app} onLogin={()=>{}} />;
 
   const viewDate = selectedDate || todayStr();
+  const giornoBloccato = (disponibilita.giorni_bloccati||[]).includes(viewDate);
+  const fuoriStagione = disponibilita.stagione?.dal && disponibilita.stagione?.al
+    ? viewDate < disponibilita.stagione.dal || viewDate > disponibilita.stagione.al
+    : false;
+  const giornoDisponibile = !giornoBloccato && !fuoriStagione;
 
   return (
     <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0d3b6e,#1a5c9a)",fontFamily:"Georgia,serif"}}>
@@ -99,6 +106,14 @@ export default function App() {
         </div>
       </div>
 
+      {/* Banner giorno bloccato */}
+      {!giornoDisponibile && (
+        <div style={{margin:"0 16px 12px",background:"rgba(220,53,69,0.3)",border:"2px solid #dc3545",borderRadius:12,padding:"10px 16px",textAlign:"center"}}>
+          <span style={{color:"#fff",fontWeight:"bold",fontSize:13}}>
+            {giornoBloccato?"🚫 Giorno chiuso":"⛱️ Fuori stagione — stabilimento chiuso"}
+          </span>
+        </div>
+      )}
       {/* Legenda */}
       <div style={{padding:"0 20px 12px",display:"flex",gap:12,flexWrap:"wrap"}}>
         <div style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:"rgba(255,255,255,0.7)"}}>
@@ -122,10 +137,10 @@ export default function App() {
             const lettera = String.fromCharCode(65+Math.floor((id-1)/cols));
             const posto = ((id-1)%cols)+1;
             return (
-              <div key={id} onClick={()=>{ if(!isOccupato) setSelectedUmb(u); }}
-                style={{background:isOccupato?"#fde8e8":"#e8f5e9",border:`2px solid ${isOccupato?"#dc3545":"#28a745"}`,borderRadius:10,padding:"8px 4px",textAlign:"center",cursor:isOccupato?"not-allowed":"pointer",opacity:isOccupato?0.7:1,minHeight:60,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+              <div key={id} onClick={()=>{ if(!isOccupato && !isBloccato) setSelectedUmb(u); }}
+                style={{background:isOccupato||isBloccato?"#fde8e8":"#e8f5e9",border:`2px solid ${isOccupato||isBloccato?"#dc3545":"#28a745"}`,borderRadius:10,padding:"8px 4px",textAlign:"center",cursor:isOccupato||isBloccato?"not-allowed":"pointer",opacity:isOccupato||isBloccato?0.7:1,minHeight:60,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
                 <div style={{fontSize:11,fontWeight:"bold",color:isOccupato?"#dc3545":"#1a7a3c"}}>{lettera}{posto}</div>
-                <div style={{fontSize:9,color:isOccupato?"#dc3545":"#28a745",marginTop:2}}>{isOccupato?"Occupato":"Libero"}</div>
+                <div style={{fontSize:9,color:isOccupato||isBloccato?"#dc3545":"#28a745",marginTop:2}}>{isOccupato?"Occupato":isBloccato?"Non disponibile":"Libero"}</div>
               </div>
             );
           })}
