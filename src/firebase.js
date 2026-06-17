@@ -49,3 +49,22 @@ export async function loadUmbrellas(db_instance) {
     return { umbrellas:[], rows:null, cols:null, nameFontSize:null, cellHeight:null, cellWidth:80, disdette:[], gruppi:[] };
   }
 }
+
+export function subscribeUmbrellas(db_instance, callback) {
+  const { onSnapshot, doc } = require("firebase/firestore");
+  return onSnapshot(doc(db_instance, "lido", "dati"), (snap) => {
+    if (snap.exists()) {
+      const data = snap.data();
+      callback({
+        umbrellas: data.umbrellas || [],
+        rows: data.rows || null,
+        cols: data.cols || null,
+        nameFontSize: data.nameFontSize || null,
+        cellWidth: data.cellWidth || 80,
+        disdette: data.disdette || [],
+        gruppi: data.gruppi || [],
+        cellHeight: data.cellHeight || null
+      });
+    }
+  });
+}
