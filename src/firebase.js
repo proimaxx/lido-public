@@ -1,36 +1,31 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 
-const firebaseConfig = {
+// Firebase GESTIONALE - solo lettura griglia
+const appGestionale = initializeApp({
+  apiKey: "AIzaSyDBjX7gNfUzVgjYqjJb7bjVtSyAoAESdGU",
+  projectId: "lido-balneare-2bd05",
+  appId: "1:784686090449:web:935e74866626742dc31df0"
+}, "gestionale");
+
+// Firebase PUBBLICO - prenotazioni clienti
+const appPublico = initializeApp({
   apiKey: "AIzaSyBoqlln2_CAeDGiZsi0Zlqgk0UqmijmCIQ",
   authDomain: "lido-public.firebaseapp.com",
   projectId: "lido-public",
   storageBucket: "lido-public.firebasestorage.app",
   messagingSenderId: "432718465597",
   appId: "1:432718465597:web:b7bad0ed737ae6e74f7854"
-};
+}, "publico");
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+export const dbGestionale = getFirestore(appGestionale);
+export const dbPublico = getFirestore(appPublico);
+export const db = dbGestionale;
 
-export { db };
-
-export async function saveUmbrellas(db_instance, umbrellas, rows, cols, nameFontSize, cellHeight, cellWidth, disdette, gruppi) {
-  const clean = (obj) => JSON.parse(JSON.stringify(obj, (k, v) => v === undefined ? null : v));
-  const data = { umbrellas: clean(umbrellas), updatedAt: Date.now() };
-  if (rows) data.rows = rows;
-  if (cols) data.cols = cols;
-  if (nameFontSize) data.nameFontSize = nameFontSize;
-  if (cellHeight) data.cellHeight = cellHeight;
-  if (cellWidth) data.cellWidth = cellWidth;
-  if (disdette && disdette.length) data.disdette = disdette;
-  if (gruppi) data.gruppi = gruppi;
-  await setDoc(doc(db_instance, "lido", "dati"), data, { merge: true });
-}
-
+// Carica griglia dal gestionale
 export async function loadUmbrellas(db_instance) {
   try {
-    const snap = await getDoc(doc(db_instance, "lido", "dati"));
+    const snap = await getDoc(doc(dbGestionale, "lido", "dati"));
     if (snap.exists()) {
       const data = snap.data();
       return {
@@ -50,8 +45,9 @@ export async function loadUmbrellas(db_instance) {
   }
 }
 
+// Sottoscrizione real-time dal gestionale
 export function subscribeUmbrellas(db_instance, callback) {
-  return onSnapshot(doc(db_instance, "lido", "dati"), (snap) => {
+  return onSnapshot(doc(dbGestionale, "lido", "dati"), (snap) => {
     if (snap.exists()) {
       const data = snap.data();
       callback({
@@ -66,4 +62,9 @@ export function subscribeUmbrellas(db_instance, callback) {
       });
     }
   });
+}
+
+// Salva prenotazione cliente sul Firebase pubblico
+export async function savePrenotazioneCliente(prenotazione) {
+  await setDoc(doc(dbPublico, "prenotazioni", prenotazione.id), prenotazione);
 }
