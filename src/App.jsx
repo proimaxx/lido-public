@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
-import { db, loadUmbrellas, savePrenotazioneCliente, loadProfiloUtente, salvaProfiloUtente, loadRichiesteInAttesa } from "./firebase";
+import { db, loadUmbrellas, subscribeUmbrellas, savePrenotazioneCliente, loadProfiloUtente, salvaProfiloUtente, loadRichiesteInAttesa, subscribeRichiesteInAttesa } from "./firebase";
 import Auth from "./Auth";
 
 const firebaseConfig = {
@@ -75,7 +75,7 @@ export default function App() {
 
   useEffect(() => {
     if (user) {
-      loadUmbrellas(db).then(data => {
+      const unsubGrid = subscribeUmbrellas(db, data => {
         if (data.umbrellas.length) setUmbrellas(data.umbrellas);
         if (data.rows) setRows(data.rows);
         if (data.cols) setCols(data.cols);
@@ -87,15 +87,40 @@ export default function App() {
       loadProfiloUtente(user.uid).then(profSnap=>{
         if (profSnap) { setProfilo(profSnap); } else { setShowProfilo(true); }
       }).catch(()=>{});
+      return () => unsubGrid();
     }
   }, [user]);
 
-  // Ricarica richieste ogni 30 secondi
+  // Sottoscrizione real-time alle richieste in attesa + notifica su nuove prenotazioni
+  const richiesteIdsPrecedenti = useRef(null);
   useEffect(()=>{
     if(!user) return;
-    loadRichiesteInAttesa().then(setRichiesteInAttesa).catch(()=>{});
-    const t=setInterval(()=>loadRichiesteInAttesa().then(setRichiesteInAttesa).catch(()=>{}),30000);
-    return ()=>clearInterval(t);
+    if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+    const unsub = subscribeRichiesteInAttesa((richieste)=>{
+      const idsAttuali = new Set(richieste.map(r=>r.id));
+      if (richiesteIdsPrecedenti.current !== null) {
+        const nuove = richieste.filter(r => !richiesteIdsPrecedenti.current.has(r.id));
+        if (nuove.length > 0) {
+          try {
+            const audio = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=");
+            audio.play().catch(()=>{});
+          } catch(e) {}
+          if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+            nuove.forEach(r=>{
+              new Notification("Nuova prenotazione online", {
+                body: `${r.nome || "Cliente"} - Ombrellone ${r.umbId || "?"} - ${r.dal || ""}`,
+                icon: "/favicon.ico"
+              });
+            });
+          }
+        }
+      }
+      richiesteIdsPrecedenti.current = idsAttuali;
+      setRichiesteInAttesa(richieste);
+    });
+    return ()=>unsub();
   }, [user]);
 
   if (loading) return (
@@ -197,7 +222,7 @@ export default function App() {
             const isBloccato = (disponibilita.ombrelloni_bloccati||[]).includes(u.id) || !giornoDisponibile;
             const petFriendly = (disponibilita.postazioni_pet||[]).includes(u.id);
             const nonPetVisible = filtraAnimali && !petFriendly;
-            const hasRichiesta = richiesteInAttesa.some(r=>Number(r.umbId)===u.id&&r.status==="in_attesa"&&(r._single?r.dal===viewDate:(viewDate>=r.dal&&viewDate<=r.al)));
+            const hasRichiesta = richiesteInAttesa.some(r=>Number(r.umbId)===u.id&&(r.status==="in_attesa"||r.status==="accettata")&&(r._single?r.dal===viewDate:(viewDate>=r.dal&&viewDate<=r.al)));
             const lettera = String.fromCharCode(65+Math.floor((id-1)/cols));
             const posto = ((id-1)%cols)+1;
             return (
@@ -279,16 +304,13 @@ export default function App() {
           <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:20,padding:"28px 24px",width:"100%",maxWidth:380}}>
             <div style={{fontSize:18,fontWeight:"bold",color:"#1a2e4a",marginBottom:8}}>🐕 Animali ammessi</div>
             <div style={{fontSize:13,color:"#555",marginBottom:20,lineHeight:1.6}}>
-              Le prenotazioni con animali sono disponibili solo in <strong>postazioni designate</strong>. 
-              Dopo aver selezionato la taglia, la mappa mostrerà solo le postazioni disponibili per il tuo animale.
+              Le prenotazioni con animali sono disponibili solo in <strong>postazioni designate</strong>.
+              Nello stabilimento sono ammessi <strong>esclusivamente animali di piccola taglia</strong>, nel rispetto delle regole previste dalla <strong>normativa comunale</strong> in materia di accesso degli animali in spiaggia.
             </div>
-            <div style={{fontSize:12,color:"#888",marginBottom:10,fontWeight:"bold"}}>Seleziona la taglia:</div>
-            {["🐕 Piccola (sotto 10kg)","🐕 Media (10-25kg)","🐕 Grande (oltre 25kg)"].map((t,i)=>(
-              <button key={i} onClick={()=>{setTagliaAnimale(t);setPortaAnimale(true);setFiltraAnimali(true);setShowAvvisoAnimale(false);}}
-                style={{width:"100%",padding:"12px 14px",borderRadius:10,border:"1px solid #ddd",background:tagliaAnimale===t?"#fff3cd":"#fff",color:tagliaAnimale===t?"#856404":"#555",cursor:"pointer",fontFamily:"inherit",fontSize:13,marginBottom:8,textAlign:"left",fontWeight:tagliaAnimale===t?"bold":"normal"}}>
-                {t}
-              </button>
-            ))}
+            <button onClick={()=>{setTagliaAnimale("Piccola taglia");setPortaAnimale(true);setFiltraAnimali(true);setShowAvvisoAnimale(false);}}
+              style={{width:"100%",padding:"12px 14px",borderRadius:10,border:"none",background:"#fff3cd",color:"#856404",cursor:"pointer",fontFamily:"inherit",fontSize:13,marginBottom:8,fontWeight:"bold"}}>
+              🐕 Porto un animale di piccola taglia
+            </button>
             <button onClick={()=>{setPortaAnimale(false);setTagliaAnimale("");setFiltraAnimali(false);setShowAvvisoAnimale(false);}}
               style={{width:"100%",padding:"10px",borderRadius:10,border:"none",background:"#f0f0f0",color:"#555",cursor:"pointer",fontFamily:"inherit",fontSize:13,marginTop:4}}>
               Non porto animali

@@ -65,5 +65,14 @@ rm -rf build && npm run build && vercel --prod --force
 - Guida tecnica diretta, passo-passo, con conferma ad ogni fase
 - Preferisce comandi terminale semplici a tooling complesso
 
+## URL di deploy
+- **Ufficiale (uso quotidiano)**: https://lido-app-zeta.vercel.app — protetto da PIN admin/collaboratore, come deve essere
+- Alias secondario `lido-public...vercel.app`: protetto da autenticazione Vercel (login email), non usato per il lavoro quotidiano — ignorare
+
+## Repo / Git
+- Repo Git effettivo: `~/Desktop/lido-public` (NON `~/Desktop/lido-app`, che è solo una cartella locale separata)
+- `.gitignore` aggiornato (19/06/2026) per escludere `node_modules/`, `build/`, `.firebase/`
+- `node_modules` e `build` rimossi dal tracking Git (restano in locale, si rigenerano con `npm install` / `npm run build`)
+
 ## TODO / problemi aperti
 - (da aggiornare — aggiungi qui i bug o le feature in corso al momento)

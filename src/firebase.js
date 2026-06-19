@@ -90,3 +90,13 @@ export async function loadRichiesteInAttesa() {
     return [];
   }
 }
+
+// Sottoscrizione real-time alle richieste di prenotazione in attesa
+export function subscribeRichiesteInAttesa(callback) {
+  return onSnapshot(collection(dbPublico, "prenotazioni"), (snap) => {
+    const richieste = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    callback(richieste);
+  }, (e) => {
+    console.error("Errore subscribeRichiesteInAttesa:", e);
+  });
+}
