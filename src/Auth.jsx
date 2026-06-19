@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 
 export default function Auth({ app, onLogin }) {
   const [mode, setMode] = useState("login"); // login | register
@@ -7,8 +7,10 @@ export default function Auth({ app, onLogin }) {
   const [password, setPassword] = useState("");
   const [nome, setNome] = useState("");
   const [cognome, setCognome] = useState("");
+  const [telefono, setTelefono] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetOk, setResetOk] = useState(false);
 
   const auth = getAuth(app);
 
@@ -17,7 +19,17 @@ export default function Auth({ app, onLogin }) {
     setLoading(true);
     try {
       if (mode === "register") {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        // Salva profilo su Firestore
+        const { getFirestore, doc, setDoc } = await import("firebase/firestore");
+        const db = getFirestore();
+        await setDoc(doc(db, "utenti", cred.user.uid), {
+          nome: nome.toUpperCase(),
+          cognome: cognome.toUpperCase(),
+          telefono,
+          email,
+          createdAt: Date.now()
+        });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -47,6 +59,7 @@ export default function Auth({ app, onLogin }) {
           <>
             <input value={nome} onChange={e=>setNome(e.target.value.toUpperCase())} placeholder="Nome" style={{width:"100%",padding:"12px 14px",borderRadius:10,border:"2px solid #e8e8e8",fontSize:15,fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:10}}/>
             <input value={cognome} onChange={e=>setCognome(e.target.value.toUpperCase())} placeholder="Cognome" style={{width:"100%",padding:"12px 14px",borderRadius:10,border:"2px solid #e8e8e8",fontSize:15,fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:10}}/>
+            <input value={telefono} onChange={e=>setTelefono(e.target.value)} placeholder="Telefono" type="tel" style={{width:"100%",padding:"12px 14px",borderRadius:10,border:"2px solid #e8e8e8",fontSize:15,fontFamily:"inherit",outline:"none",boxSizing:"border-box",marginBottom:10}}/>
           </>
         )}
 
@@ -66,6 +79,23 @@ export default function Auth({ app, onLogin }) {
             <>Hai già un account? <span onClick={()=>setMode("login")} style={{color:"#0d6efd",cursor:"pointer",fontWeight:"bold"}}>Accedi</span></>
           )}
         </div>
+        {mode === "login" && (
+          <div style={{textAlign:"center",marginTop:8,fontSize:12}}>
+            {resetOk
+              ? <div style={{background:"#fff3cd",borderRadius:8,padding:"10px 12px",border:"1px solid #ffc107",textAlign:"left"}}>
+                  <div style={{color:"#856404",fontWeight:"bold",fontSize:12,marginBottom:4}}>✅ Email inviata!</div>
+                  <div style={{color:"#856404",fontSize:11}}>Se non la trovi in arrivo, controlla la cartella <strong>SPAM</strong> o <strong>Posta indesiderata</strong>.<br/>⚠️ <strong>Importante:</strong> prima di cliccare il link, sposta l'email dalla cartella spam nella posta in arrivo, altrimenti il link potrebbe non funzionare.</div>
+                </div>
+              : <span onClick={async()=>{
+                  if(!email) { alert("Inserisci prima la tua email"); return; }
+                  try { await sendPasswordResetEmail(auth, email); setResetOk(true); }
+                  catch(e) { alert("Email non trovata"); }
+                }} style={{color:"#888",cursor:"pointer",textDecoration:"underline"}}>
+                  Password dimenticata?
+                </span>
+            }
+          </div>
+        )}
       </div>
     </div>
   );

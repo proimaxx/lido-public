@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, getDocs } from "firebase/firestore";
 
 // Firebase GESTIONALE - solo lettura griglia
 const appGestionale = initializeApp({
@@ -36,6 +36,7 @@ export async function loadUmbrellas(db_instance) {
         cellWidth: data.cellWidth || 80,
         disdette: data.disdette || [],
         gruppi: data.gruppi || [],
+        disponibilita: data.disponibilita || {giorni_bloccati:[],ombrelloni_bloccati:[],stagione:{dal:"",al:""},postazioni_pet:[]},
         cellHeight: data.cellHeight || null
       };
     }
@@ -58,6 +59,7 @@ export function subscribeUmbrellas(db_instance, callback) {
         cellWidth: data.cellWidth || 80,
         disdette: data.disdette || [],
         gruppi: data.gruppi || [],
+        disponibilita: data.disponibilita || {giorni_bloccati:[],ombrelloni_bloccati:[],stagione:{dal:"",al:""},postazioni_pet:[]},
         cellHeight: data.cellHeight || null
       });
     }
@@ -67,4 +69,24 @@ export function subscribeUmbrellas(db_instance, callback) {
 // Salva prenotazione cliente sul Firebase pubblico
 export async function savePrenotazioneCliente(prenotazione) {
   await setDoc(doc(dbPublico, "prenotazioni", prenotazione.id), prenotazione);
+}
+
+export async function loadProfiloUtente(uid) {
+  const snap = await getDoc(doc(dbPublico, "utenti", uid));
+  return snap.exists() ? snap.data() : null;
+}
+
+export async function salvaProfiloUtente(uid, dati) {
+  await setDoc(doc(dbPublico, "utenti", uid), dati, {merge: true});
+}
+
+export async function loadRichiesteInAttesa() {
+  try {
+    const snap = await getDocs(collection(dbPublico, "prenotazioni"));
+    console.log("Richieste caricate:", snap.docs.length);
+    return snap.docs.map(d => ({id: d.id, ...d.data()})).filter(r => r.status === "in_attesa");
+  } catch(e) {
+    console.error("Errore loadRichiesteInAttesa:", e);
+    return [];
+  }
 }
