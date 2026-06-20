@@ -175,6 +175,17 @@ export default function App() {
         </div>
       </div>
 
+      {user && !user.emailVerified && (
+        <div style={{background:"#fff3cd",padding:"10px 16px",textAlign:"center"}}>
+          <div style={{color:"#856404",fontSize:12,fontWeight:"bold",marginBottom:4}}>⚠️ Email non verificata</div>
+          <div style={{color:"#856404",fontSize:11,marginBottom:6}}>Controlla la posta (anche lo spam) e clicca il link per poter prenotare.</div>
+          <span onClick={async()=>{
+            try { const {sendEmailVerification} = await import("firebase/auth"); await sendEmailVerification(user); alert("Email di verifica reinviata!"); }
+            catch(e) { alert("Errore: "+e.message); }
+          }} style={{color:"#856404",fontSize:11,textDecoration:"underline",cursor:"pointer",fontWeight:"bold"}}>Reinvia email di verifica</span>
+        </div>
+      )}
+
       {/* Selettore data */}
       <div style={{padding:"16px 20px"}}>
         <div style={{background:"rgba(255,255,255,0.1)",borderRadius:12,padding:"12px 16px",display:"flex",alignItems:"center",gap:12}}>
@@ -396,6 +407,10 @@ export default function App() {
                 })()}
 
                 <button onClick={async()=>{
+                  if (user && !user.emailVerified) {
+                    alert("Devi prima verificare la tua email. Controlla la posta in arrivo (e lo spam) e clicca sul link di conferma che ti abbiamo inviato.");
+                    return;
+                  }
                   setSalvando(true);
                   try {
                     // Controllo postazione pet-friendly
